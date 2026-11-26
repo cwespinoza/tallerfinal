@@ -22,6 +22,17 @@ export default class TransactionController {
         }
     };
 
+    getPublicTransaction = async (req, res) => {
+        const { id } = req.params;
+        try {
+            const receipt = await this.transactionService.getPublicTransactionById(id);
+            res.status(200).json(receipt);
+        } catch (error) {
+            const status = error.message.includes("Acceso denegado") ? 403 : 404;
+            res.status(status).json({ error: error.message });
+        }
+    };
+
     updateTransaction = async (req, res) => {
         const { id } = req.params;
         try {

@@ -2,12 +2,24 @@ import TransactionEntity from "../../domain/entities/transaction.entity.js";
 import AuditEntity from "../../domain/entities/audit.entity.js";
 
 export default class TransactionService {
-    constructor(transactionRepository, currencyRepository, categoryRepository, budgetRepository = null, auditRepository = null) {
+    constructor(transactionRepository, currencyRepository, categoryRepository, budgetRepository = null, auditRepository = null, walletRepository = null) {
         this.transactionRepository = transactionRepository;
         this.currencyRepository = currencyRepository;
         this.categoryRepository = categoryRepository;
         this.budgetRepository = budgetRepository;
         this.auditRepository = auditRepository;
+        this.walletRepository = walletRepository;
+    }
+
+    async validateWalletOwnership(walletId, userId) {
+        if (!this.walletRepository) return;
+        const wallet = await this.walletRepository.findById(walletId);
+        if (!wallet) {
+            throw new Error("Billetera no encontrada");
+        }
+        if (String(wallet.userId) !== String(userId)) {
+            throw new Error("No autorizado: la billetera no pertenece al usuario");
+        }
     }
 
     async createTransaction(data) {
@@ -26,6 +38,11 @@ export default class TransactionService {
             throw new Error(`Category type mismatch: category is ${category.type}`);
         }
 
+        const hasWalletId = data.walletId !== undefined && data.walletId !== null && data.walletId !== "";
+        if (hasWalletId) {
+            await this.validateWalletOwnership(data.walletId, data.userId);
+        }
+
         const txDate = data.date || new Date().toISOString().split("T")[0];
         const currencyCode = (data.currency || "BOB").toUpperCase();
 
@@ -36,6 +53,7 @@ export default class TransactionService {
 
         const transaction = new TransactionEntity({
             ...data,
+            walletId: hasWalletId ? Number(data.walletId) : null,
             currency: currencyCode,
             date: txDate,
             exchangeRate: rateRecord.exchangeRate,
@@ -101,6 +119,16 @@ export default class TransactionService {
         const currencyCode = (data.currency || existing.currency).toUpperCase();
         const amount = data.amount !== undefined ? Number(data.amount) : Number(existing.amount);
 
+        let walletId = existing.walletId;
+        if (data.walletId !== undefined) {
+            if (data.walletId === null || data.walletId === "") {
+                walletId = null;
+            } else {
+                await this.validateWalletOwnership(data.walletId, userId);
+                walletId = Number(data.walletId);
+            }
+        }
+
         const rateRecord = await this.currencyRepository.findByCodeAndDate(currencyCode, txDate);
         if (!rateRecord) {
             throw new Error(`Exchange rate not found for currency ${currencyCode} on date ${txDate}`);
@@ -108,6 +136,7 @@ export default class TransactionService {
 
         const updatedPayload = {
             ...data,
+            walletId,
             amount,
             currency: currencyCode,
             date: txDate,

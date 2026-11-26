@@ -68,6 +68,10 @@ const router = Router();
  *                 type: integer
  *                 nullable: true
  *                 example: 1
+ *               isPrivate:
+ *                 type: boolean
+ *                 default: false
+ *                 example: false
  *     responses:
  *       201:
  *         description: Transacción creada y convertida con el tipo de cambio del día
@@ -87,6 +91,29 @@ router.post("/", authMiddleware, transactionController.createTransaction);
  *         description: Lista de transacciones del usuario
  */
 router.get("/", authMiddleware, transactionController.getTransactionsByUserId);
+
+/**
+ * @swagger
+ * /transactions/{id}/public:
+ *   get:
+ *     summary: Ver comprobante público de una transacción sin requerir token JWT
+ *     tags: [Transactions]
+ *     security: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Comprobante público de la transacción
+ *       403:
+ *         description: Acceso denegado porque la transacción es privada
+ *       404:
+ *         description: Transacción no encontrada
+ */
+router.get("/:id/public", transactionController.getPublicTransaction);
 
 /**
  * @swagger
@@ -119,6 +146,8 @@ router.get("/", authMiddleware, transactionController.getTransactionsByUserId);
  *               walletId:
  *                 type: integer
  *                 nullable: true
+ *               isPrivate:
+ *                 type: boolean
  *     responses:
  *       200:
  *         description: Transacción actualizada

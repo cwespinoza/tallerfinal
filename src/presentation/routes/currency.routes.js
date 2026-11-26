@@ -5,7 +5,7 @@ import CurrencyMongoRepository from "../../infrastructure/database/mongo/currenc
 import TransactionMySQLRepository from "../../infrastructure/database/mysql/transaction.mysql.repository.js";
 import AuditMySQLRepository from "../../infrastructure/database/mysql/audit.mysql.repository.js";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
-
+import { roleMiddleware } from "../middlewares/role.middleware.js";
 // Inyección de dependencias
 const currencyRepository = new CurrencyMongoRepository();
 const transactionRepository = new TransactionMySQLRepository();
@@ -33,7 +33,7 @@ router.get("/", authMiddleware, currencyController.getAllCurrencies);
  * @swagger
  * /currencies:
  *   post:
- *     summary: Registrar o actualizar el tipo de cambio de una moneda en una fecha específica
+ *     summary: Registrar o actualizar el tipo de cambio de una moneda en una fecha específica(Solo para administradores)
  *     tags: [Currencies]
  *     security:
  *       - bearerAuth: []
@@ -63,8 +63,10 @@ router.get("/", authMiddleware, currencyController.getAllCurrencies);
  *     responses:
  *       201:
  *         description: Tipo de cambio guardado exitosamente para la fecha indicada
+ *       403:
+ *         description: Acceso denegado. Solo administradores pueden registrar o actualizar tipos de cambio.          
  */
-router.post("/", authMiddleware, currencyController.saveCurrencyRateByDate);
+router.post("/", authMiddleware,roleMiddleware(["ADMIN"]), currencyController.saveCurrencyRateByDate);
 
 /**
  * @swagger

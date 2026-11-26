@@ -108,6 +108,30 @@ export default class TransactionService {
         return await this.transactionRepository.findByUserId(userId);
     }
 
+    async getPublicTransactionById(id) {
+        const transaction = await this.transactionRepository.findById(id);
+        if (!transaction) {
+            throw new Error("Transacción no encontrada");
+        }
+        if (transaction.isPrivate) {
+            throw new Error("Acceso denegado: este comprobante es privado");
+        }
+        return {
+            id: transaction.id,
+            type: transaction.type,
+            amount: transaction.amount,
+            currency: transaction.currency,
+            exchangeRate: transaction.exchangeRate,
+            exchangeRateDate: transaction.exchangeRateDate,
+            convertedAmount: transaction.convertedAmount,
+            description: transaction.description,
+            date: transaction.date,
+            categoryId: transaction.categoryId,
+            walletId: transaction.walletId,
+            isPrivate: transaction.isPrivate
+        };
+    }
+
     async updateTransaction(id, data, userId) {
         const existing = await this.transactionRepository.findById(id);
         if (!existing) throw new Error("Transaction not found");
@@ -137,6 +161,9 @@ export default class TransactionService {
         const updatedPayload = {
             ...data,
             walletId,
+            isPrivate: data.isPrivate !== undefined
+                ? (data.isPrivate === true || data.isPrivate === "true")
+                : existing.isPrivate,
             amount,
             currency: currencyCode,
             date: txDate,
